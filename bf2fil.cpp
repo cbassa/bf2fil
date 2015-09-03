@@ -3,16 +3,34 @@
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
+#include <getopt.h>
 #include "bf2fil.h"
 #include "skz.h"
 
 int read_hdf5_header(char *filename,header *h, int verbose);
 int write_fil_header(char *filename,header *h);
 
+void usage(void)
+{
+  printf("Usage: bf2fil -f <file>.h5 -r <file>.raw -m <skz block size> -s <skz sigma> -d <skz nd> -n <num blocks> -S <scaling sigma> -o <output fil>\n\n");
+  printf("-f <file>.h5        HDF5 header file\n");
+  printf("-r <file>.raw       HDF5 raw file\n");
+  printf("-m <skz block size> SKZ block size (default: 1024)\n");
+  printf("-s <skz sigma>      SKZ sigma (default: 4.0)\n");
+  printf("-d <skz nd>         SKZ averaging factor (default: 12.0)\n");
+  printf("-n <num blocks>     Number of SKZ blocks to process for scales and offsets (default: 120)\n");
+  printf("-S <scaling sigma>  Sigma levels for scales and offsets (default: 3.0,5.0)\n");
+  printf("-o <output fil>     Output fil file\n");
+  printf("-h                  This help\n");
+
+  return;
+}
+
+
 int main(int argc,char *argv[])
 {
   header h;
-  int nx,ny,my,m,iblock;
+  int nx,ny,my,m=1024,iblock,nblock=120;
   int64_t i,j,k,l,nread;
   float nd=12.0,sigma=4.0;
   double sk_lim[2];
@@ -22,21 +40,73 @@ int main(int argc,char *argv[])
   float *z,*zsm,*zss,*zcm,*zcs,*zoffset,*zscale,ztmp;
   unsigned char *cz;
   FILE *infile,*outfile;
-  int status;
+  int status,arg=0;
+  char *h5fname,*rawfname,*filfname;
+
+  // Decode options
+  if (argc>1) {
+    while ((arg=getopt(argc,argv,"f:r:m:s:d:n:S:o:h"))!=-1) {
+      switch(arg) {
+	
+      case 'f':
+	h5fname=optarg;
+	break;
+	
+      case 'r':
+	rawfname=optarg;
+	break;
+	
+      case 'o':
+	filfname=optarg;
+	break;
+	
+      case 'm':
+	m=atoi(optarg);
+	break;
+	
+      case 'd':
+	nd=atof(optarg);
+	break;
+	
+      case 's':
+	sigma=atof(optarg);
+	break;
+	
+      case 'n':
+	nblock=atoi(optarg);
+	break;
+	
+      case 'S':
+	sscanf(optarg,"%f,%f",&zsig[0],&zsig[1]);
+	break;
+	
+      case 'h':
+	usage();
+	return 0;
+	break;
+	
+      default:
+	usage();
+	return 0;
+      }
+    }
+  } else {
+    usage();
+    return 0;
+  }
 
   // Read HDF5 header
-  read_hdf5_header(argv[1],&h,0);
+  read_hdf5_header(h5fname,&h,0);
 
   // Half channel offset
   h.fch1+=0.5*h.foff;
 
   // Write FIL header
-  write_fil_header("test.fil",&h);
+  write_fil_header(filfname,&h);
 
   // Setup sizes
   nx=h.nchan;
-  m=1024;
-  ny=120*m;
+  ny=nblock*m;
   my=(int) ceil(ny/(float) m);
 
   // Mask
@@ -62,10 +132,10 @@ int main(int argc,char *argv[])
   printf("Block size: %d MB, averaged spectra: %d, d: %g, sigma: %.1f\nSK limits: [%f,%f]\n",nx*ny*sizeof(float)/(1<<20),m,nd,sigma,sk_lim[0],sk_lim[1]);
 
   // Open RAW file
-  infile=fopen(argv[2],"r");
+  infile=fopen(rawfname,"r");
 
   // Open FIL file
-  outfile=fopen("test.fil","a");
+  outfile=fopen(filfname,"a");
 
   // Loop over file
   for (iblock=0;;iblock++) {

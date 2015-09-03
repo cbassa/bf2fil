@@ -4,7 +4,7 @@
 #include <math.h>
 #include <iomanip>
 #include <iostream>
-#include "h5fil.h"
+#include "bf2fil.h"
 
 using namespace std;
 #include "dal/lofar/BF_File.h"

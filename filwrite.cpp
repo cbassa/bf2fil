@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "h5fil.h"
+#include "bf2fil.h"
 #include "filterbank.h"
 
 int write_fil_header(char *filename,header *h)
