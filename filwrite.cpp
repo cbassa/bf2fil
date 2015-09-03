@@ -33,7 +33,7 @@ int write_fil_header(char *filename,header *h)
   src_dej=h->src_dej;
   sumifs=1;
 
-  file=fopen("test.fil","w");
+  file=fopen(filename,"w");
   filterbank_header(file);
   fclose(file);
 
